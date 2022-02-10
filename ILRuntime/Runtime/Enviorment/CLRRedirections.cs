@@ -1513,10 +1513,10 @@ namespace ILRuntime.Runtime.Enviorment
             var p = esp - 1;
             Type[] param = (Type[])StackObject.ToObject(p, domain, mStack);
             intp.Free(p);
-
+            
             p = esp - 2;
             Type type = (Type)StackObject.ToObject(p, domain, mStack);
-            IType t = ToIType(type);
+            IType t = ToIType(domain,type);
             intp.Free(p);
 
             if (!t.HasGenericParameter)
@@ -1527,7 +1527,7 @@ namespace ILRuntime.Runtime.Enviorment
                 KeyValuePair<string, IType>[] arr = new KeyValuePair<string, IType>[iltype.TypeDefinition.GenericParameters.Count];
                 for(int i = 0; i < arr.Length; i++)
                 {
-                    arr[i] = new KeyValuePair<string, IType>(iltype.TypeDefinition.GenericParameters[i].Name, ToIType(param[i]));
+                    arr[i] = new KeyValuePair<string, IType>(iltype.TypeDefinition.GenericParameters[i].Name, ToIType(domain,param[i]));
                 }
                 return ILIntepreter.PushObject(ret, mStack, t.MakeGenericInstance(arr).ReflectionType, true);
             }
@@ -1537,25 +1537,33 @@ namespace ILRuntime.Runtime.Enviorment
                 KeyValuePair<string, IType>[] arr = new KeyValuePair<string, IType>[param.Length];
                 for (int i = 0; i < arr.Length; i++)
                 {
-                    arr[i] = new KeyValuePair<string, IType>("!", ToIType(param[i]));
+                    arr[i] = new KeyValuePair<string, IType>("!", ToIType(domain,param[i]));
                 }
                 return ILIntepreter.PushObject(ret, mStack, t.MakeGenericInstance(arr).ReflectionType, true);
             }
             throw new NotImplementedException();
         }
 
-        static IType ToIType(Type type)
+        static IType ToIType(AppDomain appDomain,Type type)
         {
+            IType iltype = null;
+                
             if (type is ILRuntimeType)
             {
-                return ((ILRuntimeType)type).ILType;
+                iltype = ((ILRuntimeType)type).ILType;
             }
             else if (type is ILRuntimeWrapperType)
             {
-                return ((ILRuntimeWrapperType)type).CLRType;
+                iltype = ((ILRuntimeWrapperType)type).CLRType;
             }
             else
-                throw new NotSupportedException();
+            {
+                iltype =  appDomain.GetType(type);
+             
+            }
+            if (iltype == null) throw new NotSupportedException();
+            return iltype;
+
         }
     }
 }
